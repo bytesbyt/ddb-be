@@ -8,7 +8,7 @@ userController.createUser = async (req, res) => {
     let { email, password, name, level } = req.body;
     const user = await User.findOne({ email });
     if (user) {
-      throw new Error("User already exists");
+      throw new Error("User already exists")
     }
     const salt = await bcrypt.genSaltSync(10);
     password = await bcrypt.hash(password, salt);
@@ -19,9 +19,8 @@ userController.createUser = async (req, res) => {
       level: level ? level : "customer",
     });
     await newUser.save();
-    return res.status(201).json({
-      status: "success",
-      message: "User created successfully",
+    return res.status(200).json({
+      status: "success"
     });
   } catch (error) {
     res.status(400).json({

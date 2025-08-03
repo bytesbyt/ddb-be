@@ -43,21 +43,9 @@ coverage/
 dist/
 build/
 
-# Elastic Beanstalk Files
-.elasticbeanstalk/*
-!.elasticbeanstalk/*.cfg.yml
-!.elasticbeanstalk/*.global.yml
-.ebignore
-
-# AWS
-.aws/
-
 # Temporary files
 tmp/
 temp/
 *.tmp
 *.temp
 
-# Package lock files (optional - uncomment if you don't want to track)
-# package-lock.json
-# yarn.lock

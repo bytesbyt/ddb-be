@@ -41,8 +41,8 @@ authController.authenticate = async (req, res, next) => {
         throw new Error("Invalid token");
       }
       req.userId = payload._id;
+      next();
     });
-    next();
   } catch (error) {
     res.status(400).json({ status: "fail", error: error.message });
   }

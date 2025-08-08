@@ -45,8 +45,6 @@ productController.createProduct = async (req, res) => {
 productController.getProducts = async (req, res) => {
   try {
     const { page, name } = req.query;
-    console.log("Request query params:", req.query);
-    console.log("Page param:", page, "Type:", typeof page);
 
     const cond = name 
       ? { name: { $regex: name, $options: "i" }, isDeleted: false } 
@@ -58,7 +56,6 @@ productController.getProducts = async (req, res) => {
     const totalItemNum = await Product.find(cond).countDocuments();
     const totalPageNum = Math.ceil(totalItemNum / PAGE_SIZE);
     response.totalPageNum = totalPageNum;
-    console.log("Total items:", totalItemNum, "Total pages:", totalPageNum);
 
     if (page) {
       query.skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE);
@@ -66,10 +63,6 @@ productController.getProducts = async (req, res) => {
 
     const productList = await query.exec();
     response.data = productList;
-    console.log(
-      "Final response being sent:",
-      JSON.stringify(response, null, 2)
-    );
     res.status(200).json(response);
   } catch (error) {
     res.status(400).json({ status: "fail", error: error.message });
@@ -114,6 +107,17 @@ productController.updateProduct = async (req, res) => {
         error: "This SKU already exists. Please use a different SKU." 
       });
     }
+    res.status(400).json({ status: "fail", error: error.message });
+  }
+};
+
+productController.getProductById = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const product = await Product.findOne({ _id: productId, isDeleted: false });
+    if (!product) throw new Error("Product not found");
+    res.status(200).json({ status: "success", data: product });
+  } catch (error) {
     res.status(400).json({ status: "fail", error: error.message });
   }
 };

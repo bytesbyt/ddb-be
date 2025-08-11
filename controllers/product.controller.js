@@ -1,5 +1,5 @@
 const Product = require("../models/Product");
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 4;
 const productController = {};
 
 productController.createProduct = async (req, res) => {

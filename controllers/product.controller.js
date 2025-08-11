@@ -137,4 +137,45 @@ productController.deleteProduct = async (req, res) => {
   }
 };
 
+productController.checkStock = async (item) => {
+  // product info
+  const product = await Product.findById(item.productId);
+  
+  if (!product) {
+    console.error(`Product not found with ID: ${item.productId}`);
+    return {isVerified: false, message: `Product not found`};
+  }
+  
+  
+  // compare stock and qty
+  if (!product.stock || product.stock[item.size] === undefined) {
+    return {isVerified: false, message: `Size ${item.size} not available for ${product.name}`};
+  }
+  
+  if (product.stock[item.size] < item.qty) {
+    // if no stock, return false
+    return {isVerified: false, message: `Insufficient stock for ${product.name} ${item.size}`};
+  }
+  const newStock = {...product.stock};
+  newStock[item.size] -= item.qty;
+  product.stock = newStock;
+
+  await product.save();
+  return {isVerified: true};
+}
+
+productController.checkItemListStock = async (itemList) => {
+  const insufficientStockItems = [];
+  await Promise.all(
+    itemList.map(async (item) => {
+      const stockCheck = await productController.checkStock(item);
+      if (!stockCheck.isVerified) {
+        insufficientStockItems.push({item, message: stockCheck.message});
+      }
+      return stockCheck;
+    })
+  );
+  return insufficientStockItems;
+}
+
 module.exports = productController;

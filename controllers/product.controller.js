@@ -46,8 +46,8 @@ productController.getProducts = async (req, res) => {
   try {
     const { page, name } = req.query;
 
-    const cond = name 
-      ? { name: { $regex: name, $options: "i" }, isDeleted: false } 
+    const cond = name
+      ? { name: { $regex: name, $options: "i" }, isDeleted: false }
       : { isDeleted: false };
     let query = Product.find(cond);
     let response = { status: "success" };
@@ -102,9 +102,9 @@ productController.updateProduct = async (req, res) => {
     res.status(200).json({ status: "success", data: product });
   } catch (error) {
     if (error.code === 11000 && error.keyPattern && error.keyPattern.sku) {
-      return res.status(400).json({ 
-        status: "fail", 
-        error: "This SKU already exists. Please use a different SKU." 
+      return res.status(400).json({
+        status: "fail",
+        error: "This SKU already exists. Please use a different SKU.",
       });
     }
     res.status(400).json({ status: "fail", error: error.message });
@@ -131,7 +131,9 @@ productController.deleteProduct = async (req, res) => {
       { new: true }
     );
     if (!product) throw new Error("Product not found");
-    res.status(200).json({ status: "success", message: "Product deleted successfully" });
+    res
+      .status(200)
+      .json({ status: "success", message: "Product deleted successfully" });
   } catch (error) {
     res.status(400).json({ status: "fail", error: error.message });
   }
@@ -140,42 +142,65 @@ productController.deleteProduct = async (req, res) => {
 productController.checkStock = async (item) => {
   // product info
   const product = await Product.findById(item.productId);
-  
+
   if (!product) {
     console.error(`Product not found with ID: ${item.productId}`);
-    return {isVerified: false, message: `Product not found`};
+    return { isVerified: false, message: `Product not found` };
   }
-  
-  
+
   // compare stock and qty
   if (!product.stock || product.stock[item.size] === undefined) {
-    return {isVerified: false, message: `Size ${item.size} not available for ${product.name}`};
+    return {
+      isVerified: false,
+      message: `Size ${item.size} not available for ${product.name}`,
+    };
   }
-  
+
   if (product.stock[item.size] < item.qty) {
     // if no stock, return false
-    return {isVerified: false, message: `Insufficient stock for ${product.name} ${item.size}`};
+    return {
+      isVerified: false,
+      message: `Insufficient stock for ${product.name} ${item.size}`,
+    };
   }
-  const newStock = {...product.stock};
-  newStock[item.size] -= item.qty;
-  product.stock = newStock;
 
-  await product.save();
-  return {isVerified: true};
-}
+  // Only return verification status
+  return { isVerified: true, product };
+};
 
 productController.checkItemListStock = async (itemList) => {
   const insufficientStockItems = [];
+  const verifiedItems = [];
+
+  // Check all items without modifying stock
   await Promise.all(
     itemList.map(async (item) => {
       const stockCheck = await productController.checkStock(item);
       if (!stockCheck.isVerified) {
-        insufficientStockItems.push({item, message: stockCheck.message});
+        insufficientStockItems.push({ item, message: stockCheck.message });
+      } else {
+        verifiedItems.push({ item, product: stockCheck.product });
       }
       return stockCheck;
     })
   );
+
+  // If any item has insufficient stock, return error without modifying any stock
+  if (insufficientStockItems.length > 0) {
+    return insufficientStockItems;
+  }
+
+  // Only if ALL items have sufficient stock, reduce stock for all items
+  await Promise.all(
+    verifiedItems.map(async ({ item, product }) => {
+      const newStock = { ...product.stock };
+      newStock[item.size] -= item.qty;
+      product.stock = newStock;
+      await product.save();
+    })
+  );
+  // Empty array if all items verified
   return insufficientStockItems;
-}
+};
 
 module.exports = productController;

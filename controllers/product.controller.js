@@ -44,15 +44,22 @@ productController.createProduct = async (req, res) => {
 
 productController.getProducts = async (req, res) => {
   try {
-    const { page, name } = req.query;
+    const { page, name, category } = req.query;
 
-    const cond = name
-      ? { name: { $regex: name, $options: "i" }, isDeleted: false }
-      : { isDeleted: false };
+    let cond = { isDeleted: false };
+
+    if (name) {
+      cond.name = { $regex: name, $options: "i" };
+    }
+
+    if (category) {
+      // Category filter
+      cond.category = { $regex: new RegExp(`^${category}$`, "i") };
+    }
+
     let query = Product.find(cond);
     let response = { status: "success" };
 
-    // Always calculate totalPageNum
     const totalItemNum = await Product.find(cond).countDocuments();
     const totalPageNum = Math.ceil(totalItemNum / PAGE_SIZE);
     response.totalPageNum = totalPageNum;
@@ -148,7 +155,6 @@ productController.checkStock = async (item) => {
     return { isVerified: false, message: `Product not found` };
   }
 
-  // compare stock and qty
   if (!product.stock || product.stock[item.size] === undefined) {
     return {
       isVerified: false,
@@ -157,14 +163,12 @@ productController.checkStock = async (item) => {
   }
 
   if (product.stock[item.size] < item.qty) {
-    // if no stock, return false
     return {
       isVerified: false,
       message: `Insufficient stock for ${product.name} ${item.size}`,
     };
   }
 
-  // Only return verification status
   return { isVerified: true, product };
 };
 
@@ -172,7 +176,6 @@ productController.checkItemListStock = async (itemList) => {
   const insufficientStockItems = [];
   const verifiedItems = [];
 
-  // Check all items without modifying stock
   await Promise.all(
     itemList.map(async (item) => {
       const stockCheck = await productController.checkStock(item);
@@ -185,12 +188,10 @@ productController.checkItemListStock = async (itemList) => {
     })
   );
 
-  // If any item has insufficient stock, return error without modifying any stock
   if (insufficientStockItems.length > 0) {
     return insufficientStockItems;
   }
 
-  // Only if ALL items have sufficient stock, reduce stock for all items
   await Promise.all(
     verifiedItems.map(async ({ item, product }) => {
       const newStock = { ...product.stock };
@@ -199,7 +200,7 @@ productController.checkItemListStock = async (itemList) => {
       await product.save();
     })
   );
-  // Empty array if all items verified
+
   return insufficientStockItems;
 };
 

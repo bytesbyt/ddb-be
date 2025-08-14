@@ -52,4 +52,63 @@ orderController.getOrder = async (req, res) => {
   }
 };
 
+orderController.getOrderList = async (req, res) => {
+  try {
+    const { page = 1, ordernum } = req.query;
+    const PAGE_SIZE = 3;
+    
+    let searchQuery = {};
+    
+    // search by order number
+    if (ordernum) {
+      searchQuery.orderNum = { $regex: ordernum, $options: "i" };
+    }
+    
+    const totalItemNum = await Order.find(searchQuery).countDocuments();
+    const totalPageNum = Math.ceil(totalItemNum / PAGE_SIZE);
+    
+    const orders = await Order.find(searchQuery)
+      .populate({
+        path: "userId",
+        select: "email name"
+      })
+      .populate({
+        path: "items.productId",
+        select: "name image price"
+      })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * PAGE_SIZE)
+      .limit(PAGE_SIZE);
+    
+    res.status(200).json({ 
+      status: "success", 
+      data: orders,
+      totalPageNum
+    });
+  } catch (error) {
+    return res.status(400).json({ status: "fail", error: error.message });
+  }
+};
+
+orderController.updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const order = await Order.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+    
+    if (!order) {
+      throw new Error("Order not found");
+    }
+    
+    res.status(200).json({ status: "success", data: order });
+  } catch (error) {
+    return res.status(400).json({ status: "fail", error: error.message });
+  }
+};
+
 module.exports = orderController;
